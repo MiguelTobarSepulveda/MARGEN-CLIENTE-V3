@@ -4,9 +4,9 @@ import pandas as pd
 
 @st.cache_data
 def load_data():
-    ventas = pd.read_excel("Base_Margenes_v3.xlsx", sheet_name="LIBRO DE VENTAS")
-    recetas = pd.read_excel("Base_Margenes_v3.xlsx", sheet_name="RECETAS DE PRODUCTOS")
-    insumos_hist = pd.read_excel("Base_Margenes_v3.xlsx", sheet_name="PRECIO DE INSUMOS")
+    ventas = pd.read_excel("Base_Margenes_v4.xlsx", sheet_name="LIBRO DE VENTAS")
+    recetas = pd.read_excel("Base_Margenes_v4.xlsx", sheet_name="RECETAS DE PRODUCTOS")
+    insumos_hist = pd.read_excel("Base_Margenes_v4.xlsx", sheet_name="PRECIO DE INSUMOS")
     return ventas, recetas, insumos_hist
 
 ventas, recetas, insumos_hist = load_data()
@@ -53,8 +53,18 @@ recetas_exp = recetas_exp.merge(insumos_hist_filled, on=["CODIGO INSUMO", "MES"]
 recetas_exp["PRECIO"] = recetas_exp["PRECIO"].fillna(0)
 recetas_exp["COSTO_UNITARIO"] = recetas_exp["CANTIDAD"] * recetas_exp["PRECIO"]
 
+# Mostrar tabla de insumos con descripción si se filtró producto
+if prod_sel_codigo != "Todos":
+    st.subheader("Detalle de Insumos del Producto")
+    tabla_insumos = recetas_exp[recetas_exp["CODIGO PRODUCTO"] == prod_sel_codigo][[
+        "MES", "CODIGO INSUMO", "DESCRIPCIÓN INSUMO", "CANTIDAD", "PRECIO", "COSTO_UNITARIO"
+    ]]
+    st.dataframe(tabla_insumos)
+
+# Agrupar costo por producto y mes
 costos_mensuales = recetas_exp.groupby(["CODIGO PRODUCTO", "MES"])["COSTO_UNITARIO"].sum().reset_index()
 
+# Unir con ventas
 df = df.merge(costos_mensuales, on=["CODIGO PRODUCTO", "MES"], how="left")
 df["COSTO_UNITARIO"] = df["COSTO_UNITARIO"].fillna(0)
 df["INGRESO TOTAL"] = df["CANTIDAD"] * df["PRECIO UNITARIO"]
@@ -70,7 +80,7 @@ col1.metric("Ventas Netas", f"$ {df['INGRESO TOTAL'].sum():,.0f}")
 col2.metric("Costo Total", f"$ {df['COSTO TOTAL'].sum():,.0f}")
 col3.metric("Margen Promedio", f"{(df['MARGEN %'].mean()*100):.1f} %")
 
-# Mostrar tabla
+# Mostrar tabla principal
 st.subheader("Detalle por Factura")
 st.dataframe(df[[
     "NÚMERO", "FECHA", "CLIENTE", "NOMBRE DE PRODUCTO", "MES", "CANTIDAD",
